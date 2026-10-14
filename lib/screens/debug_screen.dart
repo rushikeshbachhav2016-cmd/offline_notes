@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/database_helper.dart';
@@ -18,6 +20,7 @@ class DebugScreen extends StatefulWidget {
 class _DebugScreenState extends State<DebugScreen> {
   final _db = DatabaseHelper.instance;
   List<Note> _notes = [];
+  StreamSubscription<void>? _sub;
 
   FaultConfig get _faults => syncEngine.faults;
 
@@ -25,6 +28,14 @@ class _DebugScreenState extends State<DebugScreen> {
   void initState() {
     super.initState();
     _loadNotes();
+    // Reload whenever local data changes (e.g. after a pull).
+    _sub = _db.changes.listen((_) => _loadNotes());
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadNotes() async {
@@ -41,9 +52,17 @@ class _DebugScreenState extends State<DebugScreen> {
   void _otherDevice(Note note, Map<String, Object?> changes) {
     try {
       syncEngine.simulateOtherDeviceEdit(note.id, changes);
-      _show('Changed on the server by the "other device".');
     } on NotFound {
       _show('This note is not on the server yet. Sync it first.');
+      return;
+    }
+
+    if (_faults.offline) {
+      // Like a real phone: you only see the other device's change once online.
+      _show('Changed on the server. You are offline, so it shows when you go online.');
+    } else {
+      _show('Changed on the other device. Syncing…');
+      syncEngine.sync(); // pull it now, so this list and the notes list update
     }
   }
 

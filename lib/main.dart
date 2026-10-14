@@ -2,16 +2,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-
 import 'data/database_helper.dart';
 import 'data/sync_engine.dart';
 import 'fake_server.dart';
 import 'screens/notes_list_screen.dart';
+import 'utils/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final dir = await getApplicationSupportDirectory();
-
+  debugPrint("DB path:${dir.path}");
   // Local database + attachment files live in the app support folder.
   await DatabaseHelper.instance.init(dir.path);
 
@@ -59,7 +59,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       title: 'Offline Notes',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: Colors.indigo),
+      theme: AppTheme.light,
       home: const NotesListScreen(),
     );
   }
