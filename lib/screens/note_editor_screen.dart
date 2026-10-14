@@ -39,9 +39,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   String _shownTitle = '';
   String _shownBody = '';
 
-  bool get _isNew => widget.noteId == null;
-  bool get _dirty => _title.text != _shownTitle || _body.text != _shownBody;
-  bool get _isEmpty => _title.text.trim().isEmpty && _body.text.trim().isEmpty;
 
   @override
   void initState() {
@@ -71,7 +68,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     if (!mounted || note == null) return;
     setState(() {
       // Show the latest saved text, unless the user is typing.
-      if (_note == null || !_dirty) {
+      // Not typing = fields still match what was loaded.
+      final notTyping =
+          _title.text == _shownTitle && _body.text == _shownBody;
+      if (_note == null || notTyping) {
         if (_title.text != note.title) _title.text = note.title;
         if (_body.text != note.body) _body.text = note.body;
         _shownTitle = note.title;
@@ -84,7 +84,14 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   /// Saves when leaving the screen. An empty note is never saved.
   Future<void> _save() async {
-    if (_deleted || !_dirty || _isEmpty) return;
+    if (_deleted) return;
+
+    // Nothing changed? Don't save.
+    if (_title.text == _shownTitle && _body.text == _shownBody) return;
+
+    // Empty note? Don't save.
+    if (_title.text.trim().isEmpty && _body.text.trim().isEmpty) return;
+
     _shownTitle = _title.text;
     _shownBody = _body.text;
 
@@ -115,7 +122,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   Future<void> _attach() async {
     // A new note must exist (and not be empty) before it can get a file.
     if (_noteId == null) {
-      if (_isEmpty) {
+      if (_title.text.trim().isEmpty && _body.text.trim().isEmpty) {
         _show('Write a title or some text first');
         return;
       }
@@ -195,7 +202,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_isNew ? 'New note' : 'Edit note'),
+          title: Text(widget.noteId == null ? 'New note' : 'Edit note'),
           actions: [
             if (note != null) Center(child: SyncStatusIcon(note.syncStatus)),
             IconButton(
@@ -203,7 +210,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               tooltip: 'Attach file',
               onPressed: _attach,
             ),
-            if (!_isNew)
+            if (widget.noteId != null)
               IconButton(
                 icon: const Icon(Icons.delete_outline),
                 tooltip: 'Delete note',
@@ -219,7 +226,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               _conflictBanner(note),
             TextField(
               controller: _title,
-              autofocus: _isNew,
+              autofocus: widget.noteId == null,
               textCapitalization: TextCapitalization.sentences,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
               decoration: const InputDecoration(
